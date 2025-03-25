@@ -5,7 +5,8 @@ use std::{
     fmt::Display,
     thread::scope,
     sync::mpsc::channel,
-    fs::OpenOptions,
+    fs::{ OpenOptions, File },
+    collections::HashMap,
 };
 enum Answer {
     A,
@@ -22,6 +23,7 @@ enum Cmd {
     Query,
     Reset
 }
+struct Answers(Vec<HashMap<u16, (Option<Answer>, Option<Answer>)>>);
 
 const PATH_ONE: &'static str = "./one";
 const PATH_TWO: &'static str = "./two";
@@ -30,6 +32,7 @@ fn main() {
     let ip = local_ip().unwrap();
     let listener = TcpListener::bind((ip, 6942u16)).unwrap();
     let mut connections: Vec<TcpStream> = Vec::with_capacity(20);
+    let answers = Answers::from_files();
     //let (tx, rx) = channel::<[u8; 2]>();
     /*scope(|s| {
        s.spawn(move || {*/
@@ -40,12 +43,6 @@ fn main() {
     let file_one = OpenOptions::new()
         .append(true)
         .create(true)
-        .open(PATH_TWO);
-    let file_read_one = OpenOptions::new()
-        .read(true)
-        .open(PATH_ONE);
-    let file_read_two = OpenOptions::new()
-        .read(true)
         .open(PATH_TWO);
     for stream in listener.incoming() {
         //NOTE:
@@ -82,9 +79,11 @@ fn main() {
                         println!("Failed truncating file 2: {}", err);
                     }
                 },
-                SendResults => {},
+                SendResults => {
+                    let answers = Answers::from_files();
+                },
                 Query => {
-                    
+                        
                 },
             }
         }
@@ -123,7 +122,8 @@ fn main() {
 //Commands:
 //  Delete file contents
 //  Stop counting people in
-//TODO: File handling
+//TODO: In-memory track of people and questions
+//
 //
 //NOTE: Project idea: Sender of arbitrary byte data via TcpStream
 
@@ -161,5 +161,32 @@ impl Cmd {
     }
 }
 
-//LOGIC:
-//Wait for answers
+impl Answers {
+    fn new() -> Answers {
+        Answers(Vec::new())
+    }
+    fn from_files() /*-> Answers*/ {
+        let mut file1 = OpenOptions::new()
+            .read(true)
+            .open(PATH_ONE);
+        let mut file2 = OpenOptions::new()
+            .read(true)
+            .open(PATH_TWO);
+        let mut answers_one: HashMap<u16, Vec<Answer>> = HashMap::new();
+        let mut answers_two: HashMap<u16, Vec<Answer>> = HashMap::new();
+        let mut buf1 = [0u8; 4096];
+        let mut buf2 = [0u8; 4096];
+        if let Ok(mut file) = file1 {
+            let _ = file.read(&mut buf1);        
+        };
+        if let Ok(mut file) = file2 {
+            let _ = file.read(&mut buf2);        
+        };
+    }
+    fn append(&mut self, id: u16, side: Side, answer: Answer) {
+
+    }
+    fn answer_counts(&self) -> Vec<[u8; 2]> {
+
+    }
+}
